@@ -30,11 +30,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const loginWithOTP = async (phoneNumber) => {
+  const loginWithOTP = async (phoneNumber, countryCode = '91') => { // Add countryCode parameter with default value
     try {
       setError('');
-      const formattedNumber = `+${phoneNumber}`;
-      console.log('Requesting OTP for:', formattedNumber);
+      console.log('Requesting OTP for:', phoneNumber);
       
       const response = await axios.post(`${API_BASE_URL}/auth/request-otp`, {
         phoneNumber,
@@ -42,14 +41,10 @@ export const AuthProvider = ({ children }) => {
       });
       
       if (response.data.success) {
-        console.log('OTP request successful:', {
-          verificationId: response.data.verificationId,
-          phoneNumber: formattedNumber
-        });
+        console.log('OTP request successful:', response.data);
         setVerificationId(response.data.verificationId);
         return response.data;
       } else {
-        console.error('OTP request failed:', response.data);
         throw new Error(response.data.error || 'Failed to request OTP');
       }
     } catch (err) {
