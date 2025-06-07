@@ -10,7 +10,7 @@ const app = express();
 const PORT = process.env.PORT || 5002;
 const server = http.createServer(app);
 const corsOptions = {
-  origin: "http://localhost:5173", // Frontend URL
+  origin: ["http://localhost:5173", "http://localhost:5002"], // Allow both ports
   methods: ["GET", "POST"],
   credentials: true
 };
@@ -34,6 +34,12 @@ app.use((err, req, res, next) => {
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Log all incoming requests
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path}`, req.body);
+  next();
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));

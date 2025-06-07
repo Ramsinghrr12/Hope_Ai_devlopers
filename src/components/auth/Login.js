@@ -41,6 +41,7 @@ const Login = () => {
       setLoading(true);
       await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
         phoneNumber: formData.phoneNumber,
+        countryCode: '91',
         otp: formData.otp
       });
       navigate('/dashboard');
