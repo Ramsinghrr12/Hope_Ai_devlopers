@@ -1,22 +1,28 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import axios from 'axios';
+
+const API_BASE_URL = "http://localhost:5000/api";
 
 const roles = [
   {
-    title: 'Admin',
-    img: '/images/img2.png',
-    value: 'admin',
+    id: "patient",
+    title: "Patient",
+    description: "Access personalized mental health support and track your progress",
+    icon: "👤",
   },
   {
-    title: 'User',
-    img: '/images/img.png',
-    value: 'user',
+    id: "therapist",
+    title: "Therapist",
+    description: "Manage your practice and help patients on their journey",
+    icon: "👨‍⚕️",
   },
   {
-    title: 'Doctor',
-    img: '/images/doctor.jpg',
-    value: 'doctor',
+    id: "caregiver",
+    title: "Caregiver",
+    description: "Support your loved ones and coordinate their care",
+    icon: "👥",
   },
 ];
 
@@ -28,35 +34,43 @@ const modalVariants = {
   exit: { opacity: 0, scale: 0.85, y: 40, transition: { duration: 0.2 } },
 };
 
-import { API_BASE_URL, API_ENDPOINTS } from '../config/api';
-
 const Contact = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState(null);
   const [formData, setFormData] = useState({
-    fullname: '',
-    email: '',
-    phone: '',
-    otp: '',
-    password: '',
+    name: "",
+    email: "",
+    phone: "",
+    countryCode: "91",
+    role: "patient",
+    password: "",
+    confirmPassword: "",
+    otp: "",
   });
+  const [error, setError] = useState("");
+  const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("success");
+  const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [otpValid, setOtpValid] = useState(false);
-  const [otpError, setOtpError] = useState('');
-  const [phoneError, setPhoneError] = useState('');
-
-  // Simulate OTP for demo
-  // Remove the hardcoded OTP
-  // const generatedOtp = '123456';
+  const [showOTP, setShowOTP] = useState(false);
 
   const openModal = (role) => {
     setSelectedRole(role);
     setModalOpen(true);
-    setFormData({ fullname: '', email: '', phone: '', otp: '', password: '' });
+    setFormData({
+      name: "",
+      email: "",
+      phone: "",
+      countryCode: "91",
+      role: role.id,
+      password: "",
+      confirmPassword: "",
+      otp: "",
+    });
     setOtpSent(false);
-    setOtpValid(false);
-    setOtpError('');
-    setPhoneError('');
+    setotpValid(false);
+    setError("");
   };
 
   const closeModal = () => {
@@ -67,125 +81,135 @@ const Contact = () => {
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
-    if (name === 'phone') setPhoneError('');
-    if (name === 'otp') setOtpError('');
+    if (name === 'phone') setError('');
+    if (name === 'otp') setError('');
   };
 
   const validatePhone = (phone) => {
-    // Remove any spaces, dashes, or other characters
-    const cleanPhone = phone.replace(/[^0-9]/g, '');
-    
-    // Check if number starts with country code
-    if (cleanPhone.startsWith('91')) {
-      // If starts with 91, check if remaining digits form valid Indian number
-      return /^91[6-9]\d{9}$/.test(cleanPhone);
-    }
-    // If no country code, check for regular 10-digit number
-    return /^[6-9]\d{9}$/.test(cleanPhone);
+    const phoneRegex = /^[0-9]{10}$/;
+    return phoneRegex.test(phone);
   };
-  
-  const handleSendOtp = async (e) => {
-    e.preventDefault();
-    const cleanPhone = formData.phone.replace(/[^0-9]/g, '');
-    
-    if (!validatePhone(cleanPhone)) {
-      setPhoneError('Please enter a valid 10-digit phone number with or without country code (91)');
-      return;
-    }
-    
+
+  const handleSendOTP = async () => {
     try {
-      // If number doesn't start with 91, add it
-      const phoneWithCode = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+      const cleanPhone = formData.phone.replace(/[^0-9]/g, "");
       
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.REQUEST_OTP}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: phoneWithCode.slice(-10), // Last 10 digits
-          countryCode: '91'
-        })
-      });
-  
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      if (!validatePhone(cleanPhone)) {
+        setError("Please enter a valid 10-digit phone number");
+        return;
       }
-  
-      const data = await response.json();
-      if (data.success) {
+
+      setLoading(true);
+      setError("");
+
+      const response = await axios.post(`${API_BASE_URL}/auth/send-otp`, {
+        phoneNumber: cleanPhone,
+        countryCode: formData.countryCode
+      });
+
+      if (response.data.success) {
+        setShowOTP(true);
+        setMessage("OTP sent successfully!");
+        setMessageType("success");
         setOtpSent(true);
-        setOtpError('');
       } else {
-        setOtpError(data.error || 'Failed to send OTP');
-        console.error('OTP Error:', data);
+        setError(response.data.message || "Failed to send OTP");
       }
     } catch (error) {
-      console.error('OTP Error:', error);
-      setOtpError('Failed to connect to the server. Please check if the server is running.');
+      console.error("Error sending OTP:", error);
+      setError(error.response?.data?.message || "Failed to send OTP. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleVerifyOtp = async (e) => {
-    e.preventDefault();
+  const handleVerifyOTP = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}${API_ENDPOINTS.AUTH.VERIFY_OTP}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          phoneNumber: formData.phone,
-          countryCode: '91',
-          otp: formData.otp
-        })
+      if (!formData.otp) {
+        setError("Please enter the OTP");
+        return;
+      }
+
+      setLoading(true);
+      setError("");
+
+      const response = await axios.post(`${API_BASE_URL}/auth/verify-otp`, {
+        phoneNumber: formData.phone.replace(/[^0-9]/g, ""),
+        countryCode: formData.countryCode,
+        code: formData.otp
       });
 
-      const data = await response.json();
-      if (data.success) {
+      if (response.data.success) {
         setOtpValid(true);
-        setOtpError('');
+        setMessage("OTP verified successfully!");
+        setMessageType("success");
+        // Proceed with registration
+        handleSubmit();
       } else {
-        setOtpError(data.error || 'Invalid OTP. Please try again.');
-        setOtpValid(false);
+        setError(response.data.message || "Invalid OTP");
       }
     } catch (error) {
-      setOtpError('Failed to verify OTP. Please try again.');
-      setOtpValid(false);
+      console.error("Error verifying OTP:", error);
+      setError(error.response?.data?.message || "Failed to verify OTP. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
+    
     if (!otpValid) {
-      setOtpError('Please verify OTP before signing up.');
+      setError("Please verify your phone number first");
       return;
     }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     try {
-      const response = await fetch(`${API_BASE_URL}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          phoneNumber: formData.phone,
-          name: formData.fullname,
-          password: formData.password,
-          userType: selectedRole.value
-        })
+      setLoading(true);
+      setError("");
+
+      const response = await axios.post(`${API_BASE_URL}/auth/register`, {
+        name: formData.name,
+        email: formData.email,
+        phoneNumber: formData.phone.replace(/[^0-9]/g, ""),
+        countryCode: formData.countryCode,
+        role: formData.role,
+        password: formData.password
       });
-      const data = await response.json();
-      if (data.success) {
-        // Store the token
-        localStorage.setItem('token', data.token);
-        // Close modal and redirect to home
-        closeModal();
-        window.location.href = '/';
-      } else {
-        alert(data.error || 'Registration failed');
+
+      if (response.data.success) {
+        setMessage("Registration successful! Redirecting to login...");
+        setMessageType("success");
+        // Clear form
+        setFormData({
+          name: "",
+          email: "",
+          phone: "",
+          countryCode: "91",
+          role: "patient",
+          password: "",
+          confirmPassword: "",
+          otp: "",
+        });
+        setOtpSent(false);
+        setOtpValid(false);
+        setShowOTP(false);
+        
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
       }
     } catch (error) {
-      alert('Registration failed. Please try again.');
+      console.error("Registration error:", error);
+      setError(error.response?.data?.message || "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -195,7 +219,7 @@ const Contact = () => {
       <div className="flex flex-col sm:flex-row gap-4 mb-8">
         {roles.map((role) => (
           <motion.button
-            key={role.value}
+            key={role.id}
             onClick={() => openModal(role)}
             className="flex flex-col items-center bg-white rounded-xl shadow-md px-6 py-4 hover:shadow-xl transition cursor-pointer border-2 border-transparent hover:border-green-400 focus:outline-none hover:scale-105 duration-300"
             whileHover={{ scale: 1.08, boxShadow: '0 8px 32px 0 rgba(34,197,94,0.15)' }}
@@ -205,7 +229,7 @@ const Contact = () => {
             transition={{ duration: 0.4 }}
           >
             <motion.img
-              src={role.img}
+              src={role.icon}
               alt={role.title}
               className="w-12 h-12 rounded-full mb-2 object-cover shadow"
               initial={{ scale: 0.8, opacity: 0 }}
@@ -264,7 +288,7 @@ const Contact = () => {
                 {selectedRole.title}
               </motion.p>
               <motion.img
-                src={selectedRole.img}
+                src={selectedRole.icon}
                 alt={selectedRole.title}
                 className="w-14 h-12 mb-3 rounded-xl object-cover mx-auto shadow border border-green-100"
                 initial={{ scale: 0.8, opacity: 0 }}
@@ -280,9 +304,9 @@ const Contact = () => {
                 >
                   <input
                     type="text"
-                    name="fullname"
+                    name="name"
                     placeholder="Full Name"
-                    value={formData.fullname}
+                    value={formData.name}
                     onChange={handleChange}
                     className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-700 placeholder-gray-400 text-sm shadow"
                     required
@@ -321,10 +345,26 @@ const Contact = () => {
                   />
                 </motion.div>
                 <motion.div
-                  className="mb-2 flex gap-2"
+                  className="mb-2"
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.55 }}
+                >
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    placeholder="Confirm Password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-700 placeholder-gray-400 text-sm shadow"
+                    required
+                  />
+                </motion.div>
+                <motion.div
+                  className="mb-2 flex gap-2"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.6 }}
                 >
                   <input
                     type="tel"
@@ -332,22 +372,22 @@ const Contact = () => {
                     placeholder="Phone number"
                     value={formData.phone}
                     onChange={handleChange}
-                    className={`w-full px-3 py-2 border ${phoneError ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-700 placeholder-gray-400 text-sm shadow`}
+                    className={`w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-700 placeholder-gray-400 text-sm shadow`}
                     required
                     maxLength={10}
                     pattern="[6-9][0-9]{9}"
                   />
                   <button
                     type="button"
-                    onClick={handleSendOtp}
+                    onClick={handleSendOTP}
                     className="bg-green-500 text-white px-3 py-2 rounded font-semibold text-xs hover:bg-green-600 transition duration-200 shadow"
                     disabled={otpSent}
                   >
                     {otpSent ? 'Sent' : 'Send OTP'}
                   </button>
                 </motion.div>
-                {phoneError && <div className="text-xs text-red-500 mb-2">{phoneError}</div>}
-                {otpSent && (
+                {error && <div className="text-xs text-red-500 mb-2">{error}</div>}
+                {showOTP && (
                   <motion.div
                     className="mb-2 flex gap-2 items-center animate-fadeIn"
                     initial={{ opacity: 0, y: 10 }}
@@ -360,12 +400,12 @@ const Contact = () => {
                       placeholder="Enter OTP"
                       value={formData.otp}
                       onChange={handleChange}
-                      className={`w-full px-3 py-2 border ${otpError ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-700 placeholder-gray-400 text-sm shadow`}
+                      className={`w-full px-3 py-2 border ${error ? 'border-red-500' : 'border-gray-300'} rounded focus:outline-none focus:ring-2 focus:ring-green-400 text-gray-700 placeholder-gray-400 text-sm shadow`}
                       maxLength={6}
                     />
                     <button
                       type="button"
-                      onClick={handleVerifyOtp}
+                      onClick={handleVerifyOTP}
                       className="bg-blue-500 text-white px-3 py-2 rounded font-semibold text-xs hover:bg-blue-600 transition duration-200 shadow"
                       disabled={otpValid}
                     >
@@ -373,7 +413,6 @@ const Contact = () => {
                     </button>
                   </motion.div>
                 )}
-                {otpError && <div className="text-xs text-red-500 mb-2">{otpError}</div>}
                 <motion.button
                   type="submit"
                   className={`w-full bg-green-600 text-white py-2 rounded font-bold text-base hover:bg-green-700 transition duration-300 ease-in-out shadow mt-2 ${!otpValid ? 'opacity-60 cursor-not-allowed' : ''}`}

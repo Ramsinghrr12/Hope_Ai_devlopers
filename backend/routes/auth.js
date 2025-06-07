@@ -103,16 +103,35 @@ router.post('/verify-otp', async (req, res) => {
 // 🧾 Register User
 router.post('/register', async (req, res) => {
   try {
-    const { phoneNumber, name, password, userType = 'user' } = req.body;
+    const { phoneNumber, name, password, userType = 'user', email } = req.body;
 
-    const existingUser = await User.findOne({ phoneNumber });
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email)) {
+      return res.status(400).json({ error: 'Valid email is required', success: false });
+    }
+
+    // Check if user exists with same email or phone
+    const existingUser = await User.findOne({
+      $or: [
+        { phoneNumber },
+        { email }
+      ]
+    });
+    
     if (existingUser) {
-      return res.status(400).json({ error: 'User already exists', success: false });
+      if (existingUser.email === email) {
+        return res.status(400).json({ error: 'Email already registered', success: false });
+      }
+      if (existingUser.phoneNumber === phoneNumber) {
+        return res.status(400).json({ error: 'Phone number already registered', success: false });
+      }
     }
 
     const user = new User({
       userId: `user_${Date.now()}`,
       phoneNumber,
+      email,
       name,
       password: await bcrypt.hash(password, 10),
       type: userType,
@@ -144,11 +163,13 @@ router.post('/register', async (req, res) => {
         userId: user.userId,
         name: user.name,
         type: user.type,
-        phoneNumber: user.phoneNumber
+        phoneNumber: user.phoneNumber,
+        email: user.email
       }
     });
 
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ error: 'Registration failed', details: error.message });
   }
 });
@@ -246,6 +267,85 @@ router.post('/verify-otp', async (req, res) => {
         res.status(500).json({
             success: false,
             error: error.message || 'Failed to verify OTP'
+        });
+    }
+});
+
+// Send OTP
+router.post('/send-otp', async (req, res) => {
+    try {
+        const { phoneNumber, countryCode } = req.body;
+
+        if (!phoneNumber || !countryCode) {
+            return res.status(400).json({
+                success: false,
+                message: 'Phone number and country code are required'
+            });
+        }
+
+        // Check if user already exists
+        const existingUser = await User.findOne({ phoneNumber });
+        if (existingUser) {
+            return res.status(400).json({
+                success: false,
+                message: 'User already exists with this phone number'
+            });
+        }
+
+        const result = await sendOTP(phoneNumber, countryCode);
+        
+        if (!result.success) {
+            console.error('OTP sending failed:', result.error);
+            return res.status(400).json({
+                success: false,
+                message: 'Failed to send OTP. Please try again.'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'OTP sent successfully'
+        });
+    } catch (error) {
+        console.error('Error in send-otp:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to send OTP. Please try again.'
+        });
+    }
+});
+
+// Verify OTP
+router.post('/verify-otp', async (req, res) => {
+    try {
+        const { phoneNumber, countryCode, code } = req.body;
+
+        if (!phoneNumber || !countryCode || !code) {
+            return res.status(400).json({
+                success: false,
+                message: 'Phone number, country code, and OTP code are required'
+            });
+        }
+
+        const result = await verifyOTP(phoneNumber, countryCode, code);
+        
+        if (!result.success) {
+            console.error('OTP verification failed:', result.error);
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid OTP. Please try again.'
+            });
+        }
+
+        res.json({
+            success: true,
+            message: 'OTP verified successfully'
+        });
+    } catch (error) {
+        console.error('Error in verify-otp:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to verify OTP. Please try again.'
         });
     }
 });

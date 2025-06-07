@@ -5,6 +5,7 @@ import Contact from './pages/Contact';
 import About from './pages/About'; 
 import Navbar from './components/Navbar';
 import Login from './pages/Login'; 
+import Exercise from './pages/Exercise';
 
 const SplashScreen = () => (
   <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-br from-blue-100 via-blue-200 to-blue-300">
@@ -47,6 +48,7 @@ function App() {
         <Route path="/about" element={<About />} />
         <Route path="/signup" element={<Contact />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/exercise" element={<Exercise />} />
       </Routes>
     </BrowserRouter>
   );

@@ -11,6 +11,13 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true
   },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+    trim: true,
+    lowercase: true
+  },
   countryCode: {
     type: String,
     required: true,
@@ -59,7 +66,7 @@ const userSchema = new mongoose.Schema({
   notifications: [{
     type: {
       type: String,
-      enum: ['sms'],
+      enum: ['sms', 'email'],
       default: 'sms'
     },
     contact: String,
