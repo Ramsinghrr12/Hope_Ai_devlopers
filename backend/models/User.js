@@ -6,7 +6,20 @@ const userSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
-  phoneNumber: {
+  name: { // Full Name
+    type: String,
+    required: true
+  },
+  email: { // Email
+    type: String,
+    required: true,
+    unique: true
+  },
+  password: { // Password
+    type: String,
+    required: true
+  },
+  phoneNumber: { // Phone Number
     type: String,
     required: true,
     unique: true
@@ -23,17 +36,10 @@ const userSchema = new mongoose.Schema({
     required: true,
     default: '91'
   },
-  name: {
+  role: { // Always 'user'
     type: String,
-    required: true
-  },
-  type: {
-    type: String,
-    enum: ['user', 'doctor', 'admin'],
-    required: true
-  },
-  password: {
-    type: String,
+    enum: ['user'],
+    default: 'user',
     required: true
   },
   otp: {
@@ -56,12 +62,6 @@ const userSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
-  },
-  adminPhone: {
-    type: String,
-    required: function() {
-      return this.type === 'admin';
-    }
   },
   notifications: [{
     type: {
@@ -87,10 +87,12 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function(next) {
   if (!this.userId) {
-    this.userId = `${this.type}_${Math.floor(100000 + Math.random() * 900000)}`;
+    this.userId = `user_${Math.floor(100000 + Math.random() * 900000)}`;
   }
+  this.role = 'user'; // Always enforce role as 'user'
   next();
 });
 
 const User = mongoose.model('User', userSchema);
 module.exports = User;
+

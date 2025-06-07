@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 
 const Home = () => (
   <div className="mt-20 px-4">
@@ -14,12 +15,18 @@ const Home = () => (
             Talk to our AI-powered mental health assistant 24/7 — safely, privately, and supportively.
           </p>
           <div className="flex justify-center md:justify-start gap-4">
-            <button className="bg-teal-500 text-white px-6 py-2 rounded-xl font-semibold text-base hover:bg-teal-600">
+            <Link
+              to="/login"
+              className="bg-teal-500 text-white px-6 py-2 rounded-xl font-semibold text-base hover:bg-teal-600 flex items-center justify-center"
+            >
               Start Chat
-            </button>
-            <button className="bg-blue-700 text-white px-6 py-2 rounded-xl font-semibold text-base hover:bg-blue-800">
+            </Link>
+            <Link
+              to="/about"
+              className="bg-blue-700 text-white px-6 py-2 rounded-xl font-semibold text-base hover:bg-blue-800 flex items-center justify-center"
+            >
               Learn More
-            </button>
+            </Link>
           </div>
         </div>
 

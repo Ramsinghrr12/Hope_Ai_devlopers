@@ -158,3 +158,5 @@ server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`API base URL: http://localhost:${PORT}/api`);
 });
+
+console.log('JWT_SECRET:', process.env.JWT_SECRET);

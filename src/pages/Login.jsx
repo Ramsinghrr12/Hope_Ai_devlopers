@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { API_BASE_URL } from '../config/api';
 
 const roles = [
   {
@@ -49,10 +51,40 @@ const Login = () => {
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSubmit = (e) => {
+  const navigate = useNavigate();
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    alert(`Logging in as ${selectedRole.title}\nEmail: ${formData.email}`);
-    closeModal();
+    try {
+      const response = await fetch(`${API_BASE_URL}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          // If your backend expects phoneNumber instead of email, adjust accordingly
+        }),
+      });
+      const data = await response.json();
+      if (response.ok && data.token) {
+        localStorage.setItem('token', data.token);
+        // Redirect based on role
+        if (data.role === 'user') {
+          navigate('/user');
+        } else if (data.role === 'admin') {
+          navigate('/admin');
+        } else if (data.role === 'doctor') {
+          navigate('/doctor');
+        } else {
+          navigate('/'); // fallback
+        }
+        closeModal();
+      } else {
+        alert(data.error || 'Login failed');
+      }
+    } catch (error) {
+      alert('Login failed. Please try again.');
+    }
   };
 
   return (
@@ -181,9 +213,9 @@ const Login = () => {
                   />
                 </div>
                 <div className="text-right mb-3">
-                  <a href="#" className="text-xs text-blue-600 hover:underline">
-                    Forgot password ?
-                  </a>
+                   <Link to="/fpassword" className="text-blue-600 hover:underline font-medium">
+                  Forgot password ?
+                </Link>
                 </div>
                 <motion.button
                   type="submit"
